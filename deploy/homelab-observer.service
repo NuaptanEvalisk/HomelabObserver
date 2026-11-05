@@ -1,0 +1,33 @@
+[Unit]
+Description=HomelabObserver read-only metrics collector and MCP server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=homelab-observer
+Group=homelab-observer
+ExecStart=/usr/local/bin/homelab-observer -config /etc/homelab-observer/config.json
+Restart=on-failure
+RestartSec=10s
+StateDirectory=homelab-observer
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/homelab-observer
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+{
+  "listen": "127.0.0.1:8765",
+  "status_path": "/path/to/existing/status.json",
+  "database_path": "/var/lib/homelab-observer/history.sqlite",
+  "truenas_url": "wss://nas.example.internal/api/current",
+  "truenas_api_key_file": "/etc/homelab-observer/truenas-api-key",
+  "truenas_certificate_sha256": "REPLACE_WITH_64_HEX_CERTIFICATE_FINGERPRINT",
+  "mcp_bearer_file": "/etc/homelab-observer/mcp-bearer",
+  "poll_seconds": 60,
+  "retention_days": 30
+}
