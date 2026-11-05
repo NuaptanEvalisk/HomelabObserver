@@ -1,0 +1,39 @@
+[Unit]
+Description=OpenAI Secure MCP Tunnel for HomelabObserver
+Documentation=https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
+Wants=network-online.target
+After=network-online.target homelab-observer.service
+Requires=homelab-observer.service
+
+[Service]
+Type=simple
+User=homelab-tunnel
+Group=homelab-tunnel
+StateDirectory=homelab-tunnel
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/homelab-tunnel
+Environment=HOME=/var/lib/homelab-tunnel
+# Local-only site-specific values (tunnel ID, optional outbound proxy).
+# Secrets are separate protected files, not environment variables or argv.
+EnvironmentFile=/etc/homelab-tunnel/control-plane.env
+ExecStart=/usr/local/bin/tunnel-client run --control-plane.api-key file:/etc/homelab-tunnel/openai-api-key --control-plane.http-proxy env:CONTROL_PLANE_HTTP_PROXY --mcp.server-url url=http://127.0.0.1:8765/mcp,channel=main --mcp.extra-headers "Authorization: file:/etc/homelab-tunnel/mcp-authorization" --mcp.discovery-extra-headers "Authorization: file:/etc/homelab-tunnel/mcp-authorization" --mcp.max-concurrent-requests 4 --control-plane.max-inflight 8 --health.listen-addr 127.0.0.1:18766 --log.level info
+Restart=on-failure
+RestartSec=12s
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

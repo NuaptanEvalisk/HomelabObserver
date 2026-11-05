@@ -125,7 +125,17 @@ func TestMCPAuthenticationAndTools(t *testing.T) {
 	if status, _ := post("wrong-token", "tools/list", "", ""); status != 401 {
 		t.Fatal("invalid bearer accepted")
 	}
-	status, result := post(secret, "tools/list", "", "2026-07-28")
+	status, result := post(secret, "server/discover", "", "2026-07-28")
+	if status != 200 {
+		t.Fatalf("modern MCP discover: %v", result)
+	}
+	discovery := result["result"].(map[string]any)
+	if discovery["resultType"] != "complete" ||
+		len(discovery["supportedVersions"].([]any)) != 1 ||
+		discovery["supportedVersions"].([]any)[0] != "2026-07-28" {
+		t.Fatalf("invalid modern discovery: %v", discovery)
+	}
+	status, result = post(secret, "tools/list", "", "2026-07-28")
 	if status != 200 {
 		t.Fatalf("modern MCP list: %v", result)
 	}

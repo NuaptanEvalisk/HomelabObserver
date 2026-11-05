@@ -119,11 +119,60 @@ MCP_BEARER_TOKEN. The server explicitly refuses non-loopback bind addresses
 and rejects requests carrying an Origin header. The API key is never used
 as MCP authentication.
 
-Use a **Secure MCP Tunnel** or authenticated, TLS-protected gateway to connect
-a remote client. Do not expose the loopback endpoint through a public,
-unauthenticated proxy. Deployment does not automatically connect anyone's
-ChatGPT or Dot account; that connection requires authorization in the
-client's plugin interface.
+## Secure MCP Tunnel (private ChatGPT and dots access)
+
+HomelabObserver supports OpenAI's **Secure MCP Tunnel**, which requires only
+an outbound connection to OpenAI's API. It does **not** require DNS, a
+public hostname, an incoming firewall rule, or a Cloudflare Tunnel.
+
+1. In [Platform Tunnel settings](https://platform.openai.com/settings/organization/tunnels),
+   create a private tunnel and associate it with the target ChatGPT workspace
+   and owning Platform organization. Save its tunnel ID.
+2. Create a restricted **runtime API key** with Tunnels Read + Use in that
+   organization. Tunnel creation requires separate Tunnels Read + Manage
+   permissions. Do not give the long-running daemon an Admin API key.
+3. Download and SHA-256-verify the official Linux binary from
+   [openai/tunnel-client releases](https://github.com/openai/tunnel-client/releases/latest).
+   Install it at /usr/local/bin/tunnel-client. The upstream Apache-licensed
+   binary is separate from this GPL repository.
+4. Install deploy/homelab-observer-tunnel.service as a systemd unit and
+   deploy/homelab-observer-tunnel-setup to /usr/local/sbin/. Create the
+   dedicated unprivileged homelab-tunnel account. Its directory
+   /etc/homelab-tunnel must be mode 0700 and owned by homelab-tunnel.
+   Do not start the tunnel service without credentials.
+5. SSH to the host and run the setup command **interactively**:
+
+       sudo /usr/local/sbin/homelab-observer-tunnel-setup
+
+   Enter the tunnel ID and hidden OpenAI runtime key in the prompts.
+   The script validates the values and stores the key in the 0600 file
+   /etc/homelab-tunnel/openai-api-key. Neither value is printed or placed
+   in shell history, command arguments or Git. The script enables and starts
+   the service.
+6. Verify the service and readiness:
+
+       systemctl status homelab-observer-tunnel.service
+       curl -fsS http://127.0.0.1:18766/healthz
+       curl -fsS http://127.0.0.1:18766/readyz
+
+The official client uses file-based secret references and forwards to the
+loopback MCP server at http://127.0.0.1:8765/mcp. It injects the separate
+MCP Bearer token from another protected file, leaving the MCP endpoint
+authenticated. The tunnel identity does not have permission to read the
+TrueNAS API key. The outbound OpenAI transport uses a host-specific proxy,
+but loopback MCP calls are not proxied.
+
+In ChatGPT Plugins, choose **Add custom MCP server**, Connection **Tunnel**,
+select the newly created tunnel, and create a private HomelabObserver plugin.
+Select **No authentication** for the ChatGPT-facing plugin only after
+confirming that the tunnel is restricted to your intended workspace; the
+daemon itself injects the local MCP Bearer credential. This does not disable
+authentication on the actual MCP origin. Install the plugin to your ChatGPT
+account and allow your dot to use it through shared Plugins permissions.
+
+A local installation without an OpenAI API key or tunnel ID is intentionally
+not an active OpenAI connection. Confirm /readyz and run a real plugin tool
+call after provisioning before considering the integration complete.
 
 ## Data interpretation and limits
 

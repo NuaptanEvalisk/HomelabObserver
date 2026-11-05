@@ -224,12 +224,22 @@ func handler(s *Store, authToken string) http.Handler {
 		}
 		var result any
 		switch req.Method {
-		case "initialize":
-			advertised := "2025-11-25"
-			if modern {
-				advertised = "2026-07-28"
+		case "server/discover":
+			if !modern {
+				writeRPC(w, rpcError(req.ID, -32601, "server/discover requires MCP 2026-07-28"))
+				return
 			}
-			result = map[string]any{"protocolVersion": advertised,
+			// The modern MCP era is stateless and starts with server/discover
+			// rather than the earlier initialize handshake.
+			result = map[string]any{
+				"resultType":        "complete",
+				"supportedVersions": []string{"2026-07-28"},
+				"capabilities":      map[string]any{"tools": map[string]any{"listChanged": false}},
+			}
+		case "initialize":
+			// Modern clients never initialize; do not accidentally negotiate
+			// the modern version through the legacy handshake.
+			result = map[string]any{"protocolVersion": "2025-11-25",
 				"capabilities": map[string]any{"tools": map[string]any{"listChanged": false}},
 				"serverInfo":   map[string]any{"name": "HomelabObserver", "version": "0.1.0"}}
 		case "ping":

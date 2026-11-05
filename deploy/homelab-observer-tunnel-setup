@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-only
+# Interactive provisioning on the private host. Never pass credentials on
+# a command line or through a remote-assistant tool. Run directly over SSH.
+set -euo pipefail
+umask 077
+
+if [[ ${EUID} != 0 ]]; then
+  echo "Run this setup as root on the HomelabObserver host." >&2
+  exit 1
+fi
+if [[ ! -t 0 ]]; then
+  echo "An interactive terminal is required; refusing piped credentials." >&2
+  exit 1
+fi
+if [[ ! -x /usr/local/bin/tunnel-client ]]; then
+  echo "The official tunnel-client binary is not installed." >&2
+  exit 1
+fi
+if ! id homelab-tunnel >/dev/null 2>&1; then
+  echo "The homelab-tunnel service account does not exist." >&2
+  exit 1
+fi
+
+echo "Create the tunnel at https://platform.openai.com/settings/organization/tunnels"
+echo "Use a restricted runtime key with Tunnels Read + Use."
+IFS= read -r -p "Tunnel ID (tunnel_...): " tunnel_id
+if [[ ! "$tunnel_id" =~ ^tunnel_([a-z0-9]{32}|[a-z0-9]{4}_[a-z0-9]{32})$ ]]; then
+  echo "Invalid Tunnel ID. No credentials have been written." >&2
+  exit 1
+fi
+
+api_key=""
+trap 'unset api_key tunnel_id' EXIT
+IFS= read -r -s -p "OpenAI tunnel runtime API key (hidden): " api_key
+printf '\n'
+if [[ ${#api_key} -lt 24 || "$api_key" != sk-* ]]; then
+  echo "Invalid API key format. No credentials have been written." >&2
+  exit 1
+fi
+
+base=/etc/homelab-tunnel
+if [[ ! -d "$base" || ! -s /etc/homelab-observer/mcp-bearer ]]; then
+  echo "Protected tunnel directory or existing MCP credential is missing." >&2
+  exit 1
+fi
+
+write_secret() {
+  local filename="$1"
+  local value="$2"
+  local temp
+  temp="$(mktemp "$base/.credential.XXXXXXXX")"
+  chmod 0600 "$temp"
+  printf '%s\n' "$value" > "$temp"
+  chown homelab-tunnel:homelab-tunnel "$temp"
+  mv -f "$temp" "$base/$filename"
+}
+
+# This secret belongs solely to the tunnel runner; it cannot access the
+# TrueNAS administrative API credential owned by the observer service.
+write_secret openai-api-key "$api_key"
+
+# Bearer authentication still applies to the local MCP service. Only this
+# low-privilege tunnel identity can read the injected authorization header.
+read -r observer_token < /etc/homelab-observer/mcp-bearer
+write_secret mcp-authorization "Bearer $observer_token"
+unset observer_token
+
+# No shell interpolation: the id is validated above, and only expected fixed
+# characters occur in the resulting environment file.
+write_secret control-plane.env "CONTROL_PLANE_TUNNEL_ID=$tunnel_id
+CONTROL_PLANE_HTTP_PROXY=http://127.0.0.1:17890"
+unset api_key
+
+systemctl daemon-reload
+systemctl enable homelab-observer-tunnel.service
+systemctl restart homelab-observer-tunnel.service
+echo "Tunnel configuration written (no credentials displayed)."
+echo "Status: systemctl status homelab-observer-tunnel.service"
+echo "Readiness: curl -fsS http://127.0.0.1:18766/readyz"
+echo "The tunnel is ready only when /readyz returns a successful HTTP response."
