@@ -58,7 +58,10 @@ func TestMockTrueNASWebSocketCollector(t *testing.T) {
 			case "app.query":
 				result = []map[string]any{{"name": "media-app", "state": "RUNNING",
 					"human_version": "3.0.1", "version": "1.0.3", "latest_version": "1.1.0",
-					"upgrade_available": true, "image_updates_available": true}}
+					"upgrade_available": true, "image_updates_available": true,
+					"active_workloads": map[string]any{"used_host_ips": []string{"0.0.0.0"},
+						"used_ports": []any{map[string]any{"container_port": 3003, "protocol": "tcp",
+							"host_ports": []any{map[string]any{"host_port": 3003, "host_ip": "0.0.0.0"}}}}}}}
 			case "alert.list":
 				result = []map[string]any{{"level": "CRITICAL", "source": "VolumeStatus", "formatted": "old stored alert",
 					"datetime": map[string]int64{"$date": time.Now().Add(-40 * 24 * time.Hour).UnixMilli()}}}

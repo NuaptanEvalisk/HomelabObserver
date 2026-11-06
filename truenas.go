@@ -250,6 +250,17 @@ func collectTrueNAS(ctx context.Context, c Config, s *Store) {
 		LatestVersion         *string `json:"latest_version"`
 		UpgradeAvailable      bool    `json:"upgrade_available"`
 		ImageUpdatesAvailable bool    `json:"image_updates_available"`
+		ActiveWorkloads       struct {
+			UsedHostIPs []string `json:"used_host_ips"`
+			UsedPorts   []struct {
+				ContainerPort int    `json:"container_port"`
+				Protocol      string `json:"protocol"`
+				HostPorts     []struct {
+					HostPort int    `json:"host_port"`
+					HostIP   string `json:"host_ip"`
+				} `json:"host_ports"`
+			} `json:"used_ports"`
+		} `json:"active_workloads"`
 	}
 	err = call("app.query", []any{}, &apps)
 	if err != nil {
@@ -265,6 +276,8 @@ func collectTrueNAS(ctx context.Context, c Config, s *Store) {
 				"latest_chart_version":    a.LatestVersion,
 				"upgrade_available":       a.UpgradeAvailable,
 				"image_updates_available": a.ImageUpdatesAvailable,
+				"used_host_ips":           a.ActiveWorkloads.UsedHostIPs,
+				"published_ports":         a.ActiveWorkloads.UsedPorts,
 			})
 			changes["app:"+a.Name] = a.State
 		}
