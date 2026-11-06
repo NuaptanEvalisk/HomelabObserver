@@ -56,7 +56,9 @@ func TestMockTrueNASWebSocketCollector(t *testing.T) {
 			case "pool.query":
 				result = []map[string]any{{"name": "pool0", "status": "ONLINE", "healthy": true, "size": 1000, "free": 400, "allocated": 600}}
 			case "app.query":
-				result = []map[string]any{{"name": "media-app", "state": "RUNNING"}}
+				result = []map[string]any{{"name": "media-app", "state": "RUNNING",
+					"human_version": "3.0.1", "version": "1.0.3", "latest_version": "1.1.0",
+					"upgrade_available": true, "image_updates_available": true}}
 			case "alert.list":
 				result = []map[string]any{{"level": "CRITICAL", "source": "VolumeStatus", "formatted": "old stored alert",
 					"datetime": map[string]int64{"$date": time.Now().Add(-40 * 24 * time.Hour).UnixMilli()}}}
@@ -85,6 +87,11 @@ func TestMockTrueNASWebSocketCollector(t *testing.T) {
 		if err != nil || current.Stale {
 			t.Errorf("%s missing or stale: %+v %v", kind, current, err)
 		}
+	}
+	appState, err := s.Current("truenas_apps", 2*time.Minute)
+	if err != nil || !strings.Contains(string(appState.Data), `"human_version":"3.0.1"`) ||
+		!strings.Contains(string(appState.Data), `"upgrade_available":true`) {
+		t.Fatal("app version or upgrade availability missing")
 	}
 	points, err := s.History("truenas", "cpu_percent", 1, 100)
 	if err != nil || len(points) != 1 {

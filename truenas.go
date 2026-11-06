@@ -243,18 +243,29 @@ func collectTrueNAS(ctx context.Context, c Config, s *Store) {
 		}
 	}
 	var apps []struct {
-		Name  string `json:"name"`
-		State string `json:"state"`
+		Name                  string  `json:"name"`
+		State                 string  `json:"state"`
+		HumanVersion          string  `json:"human_version"`
+		Version               string  `json:"version"`
+		LatestVersion         *string `json:"latest_version"`
+		UpgradeAvailable      bool    `json:"upgrade_available"`
+		ImageUpdatesAvailable bool    `json:"image_updates_available"`
 	}
 	err = call("app.query", []any{}, &apps)
 	if err != nil {
 		s.RecordError("truenas_apps", err)
 	} else {
 		now := time.Now().UTC()
-		entries := make([]map[string]string, 0, len(apps))
+		entries := make([]map[string]any, 0, len(apps))
 		changes := map[string]string{}
 		for _, a := range apps {
-			entries = append(entries, map[string]string{"name": a.Name, "state": a.State})
+			entries = append(entries, map[string]any{
+				"name": a.Name, "state": a.State,
+				"human_version": a.HumanVersion, "chart_version": a.Version,
+				"latest_chart_version":    a.LatestVersion,
+				"upgrade_available":       a.UpgradeAvailable,
+				"image_updates_available": a.ImageUpdatesAvailable,
+			})
 			changes["app:"+a.Name] = a.State
 		}
 		if e := s.Put("truenas_apps", now, entries, nil); e != nil {

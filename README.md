@@ -15,7 +15,8 @@ control.
   directly from Linux procfs and statfs.
 - Connects to TrueNAS SCALE 25.10 through its official JSON-RPC WebSocket API,
   using TLS certificate fingerprint verification and a separate read-only key.
-  It gathers CPU, RAM, ARC, pool health/capacity, apps and system alerts.
+  It gathers CPU, RAM, ARC, pool health/capacity, app states and installed
+  versions, catalog-update availability, and system alerts.
 - Saves time-series measurements and service transitions in SQLite. Retains
   30 days by default.
 - Serves authenticated, loopback-only Streamable HTTP MCP with six read-only
